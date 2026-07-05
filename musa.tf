@@ -487,3 +487,25 @@ resource "aws_launch_template" "WebLT" {
   }
 
 
+# Create the Auto Scaling Group
+
+resource "aws_autoscaling_group" "WebASG" {
+  desired_capacity     = var.desired_capacity
+  max_size             = var.max_size
+  min_size             = var.min_size
+  vpc_zone_identifier  = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
+  launch_template {
+    id      = aws_launch_template.WebLT.id
+    version = "$Latest"
+  }
+  
+  # This is the health check type for the Auto Scaling group. It will use the ELB health checks to determine the health of the instances in the group.
+  health_check_type    = "ELB"
+  target_group_arns = [aws_lb_target_group.WebTG.arn]
+
+  tag {
+    key                 = "Name"
+    value               = "Web_App_Tier"
+    propagate_at_launch = true
+  }
+}
