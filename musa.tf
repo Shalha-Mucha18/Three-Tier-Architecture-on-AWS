@@ -450,3 +450,40 @@ data "aws_ami" "myami" {
     values = ["hvm"]
   }
 }
+
+# Create the Launch template
+
+resource "aws_launch_template" "WebLT" {
+  name = "Web_Launch_Template"
+
+  block_device_mappings {
+    device_name = "/dev/sdf"
+
+    ebs {
+      volume_size = 8
+    }
+  }
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.LT_profile.name
+  }
+
+  image_id = data.aws_ami.myami.id
+  instance_type = var.instance_type
+
+  monitoring {
+    enabled = true
+  }
+
+  vpc_security_group_ids = [aws_security_group.WebSG.id]
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "Web_App_Tier"
+    }
+    user_data = filebase64("${path.module}/script.sh")  
+  }
+
+
