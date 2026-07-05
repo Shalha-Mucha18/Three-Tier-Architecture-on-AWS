@@ -387,3 +387,66 @@ resource "aws_iam_role_policy_attachment" "EC2_SSM_managed_policy" {
   policy_arn = aws_iam_policy.SSM_policy.arn
 }
 
+
+# Create the target group and ALB
+
+resource "aws_lb_target_group" "WebTG" {
+  name     = "WebTG"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.custom_VPC.id
+  deregistration_delay = var.dereg-delay
+
+  tags = {
+    Name = "WebTG"
+  }
+}
+
+# Create the ALB
+
+resource "aws_lb" "WebALB" {
+  name               = "WebALB"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.ALBSG.id]
+  subnets            = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
+
+  tags = {
+    Name = "WebALB"
+  }
+}
+
+#  Create the ALB listener for Port 80 HTTP with a forwarding rule to WebTG and link the listener to the ALB
+
+resource "aws_lb_listener" "WebALB_listener" {
+  load_balancer_arn = aws_lb.WebALB.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.WebTG.arn
+  }
+}
+
+# Create the launch template and auto scaaling group
+
+data "aws_ami" "myami" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm*"]
+  }
+
+  filter { 
+    name = "root-device-type" 
+    values = ["ebs"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
