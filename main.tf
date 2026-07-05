@@ -1,140 +1,116 @@
-######
-# Defining the provider block
+# Defining the provider
 
 provider "aws" {
-  region  = var.region
-  profile = var.profile
+  region = var.region
 }
 
-#########################
-# Task 1 : Create the VPC and Subnets
 
 # Create the VPC
 
-resource "aws_vpc" "custom_VPC" {
+resource "aws_vpc" "main" {
   cidr_block = var.vpc_cidr_block
   enable_dns_support = true
   enable_dns_hostnames = true
-
   tags = {
-    Name = "custom_VPC"
+    Name = "custom-vpc"
   }
 }
 
 # Create an Internet Gateway
 
 resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
   tags = {
-    Name = "IGW-custom_VPC"
+    Name = "custom-igw"
   }
 }
 
-# Create an IGW attachment to the VPC
+# Create an IGW attachment to VPC
 
 resource "aws_internet_gateway_attachment" "igw-attach" {
   internet_gateway_id = aws_internet_gateway.igw.id
-  vpc_id = aws_vpc.custom_VPC.id
+  vpc_id = aws_vpc.main.id
 }
 
-# Create Public Subnet 1
 
-resource "aws_subnet" "Public_Subnet1" {
-  vpc_id              = aws_vpc.custom_VPC.id
-  cidr_block          = var.public_subnet1_cidr_block
-  availability_zone   = var.public_subnet1_az
-  
+
+# Create a public subnet 1
+resource "aws_subnet" "public_subnet_1" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = var.public_subnet1_cidr_block
+  availability_zone = var.public_subnet1_az
+  map_public_ip_on_launch = true
   tags = {
-    Name = "Public_Subnet1"
+    Name = "public-subnet-1"
   }
 }
 
-# Create Public Subnet 2
-
-resource "aws_subnet" "Public_Subnet2" {
-  vpc_id              = aws_vpc.custom_VPC.id
-  cidr_block          = var.public_subnet2_cidr_block
-  availability_zone   = var.public_subnet2_az
-  
+# Create a public subnet 2
+resource "aws_subnet" "public_subnet_2" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = var.public_subnet2_cidr_block
+  availability_zone = var.public_subnet2_az
+  map_public_ip_on_launch = true
   tags = {
-    Name = "Public_Subnet2"
+    Name = "public-subnet-2"
   }
 }
 
-
-# Create a route table for the public subnets
-
-resource "aws_route_table" "public_route_table" {
-  vpc_id = aws_vpc.custom_VPC.id
-
+# create route table for the public subnets 1
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main.id
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
-
-  route {
-    cidr_block = "10.0.0.0/16"
-    gateway_id = "local"
-  }
-
   tags = {
-    Name      = "Public_RT"
-
+    Name = "public-rt"
   }
 }
 
-# Create route table associations for Public Subnet 1
+# Associate the public route table with the public subnets 1
+resource "aws_route_table_association" "public_rt_assoc_1" {
 
-resource "aws_route_table_association" "public_subnet1" {
-  depends_on     = [aws_subnet.Public_Subnet1]
-  route_table_id = aws_route_table.public_route_table.id
-  subnet_id      = aws_subnet.Public_Subnet1.id
+  depends_on = [aws_subnet.public_subnet_1]
+  subnet_id = aws_subnet.public_subnet_1.id
+  route_table_id = aws_route_table.public_rt.id
 }
 
-# Create route table associations for Public Subnet 2
+# Associate the public route table with the public subnets 2
+resource "aws_route_table_association" "public_rt_assoc_2" {
+  depends_on = [aws_subnet.public_subnet_2]
+  subnet_id = aws_subnet.public_subnet_2.id
+  route_table_id = aws_route_table.public_rt.id
+} 
 
-resource "aws_route_table_association" "public_subnet2" {
-  depends_on     = [aws_subnet.Public_Subnet2]
-  route_table_id = aws_route_table.public_route_table.id
-  subnet_id      = aws_subnet.Public_Subnet2.id
-}
-
-
-# Create the two private subnets
-# Create private subnet 1
-
-resource "aws_subnet" "Private_Subnet1" {
-  vpc_id              = aws_vpc.custom_VPC.id
-  cidr_block          = var.private_subnet1_cidr_block
-  availability_zone   = var.private_subnet1_az
-  
+# Create  private subnet 1
+resource "aws_subnet" "private_subnet_1" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = var.private_subnet1_cidr_block
+  availability_zone = var.private_subnet1_az
+  map_public_ip_on_launch = false
   tags = {
-    Name = "Private_Subnet1"
+    Name = "private-subnet-1"
   }
 }
 
-# Create private subnet 2
+# Create  private subnet 2
 
-resource "aws_subnet" "Private_Subnet2" {
-  vpc_id              = aws_vpc.custom_VPC.id
-  cidr_block          = var.private_subnet2_cidr_block
-  availability_zone   = var.private_subnet2_az
-  
+resource "aws_subnet" "private_subnet_2" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = var.private_subnet2_cidr_block
+  availability_zone = var.private_subnet2_az
+  map_public_ip_on_launch = false
   tags = {
-    Name = "Private_Subnet2"
+    Name = "private-subnet-2"
   }
 }
 
-#########################
-# Task 2 : Create two NAT Gateways
-
-# Create two Elastic IPs, one for each NAT Gateway
-
-# Create an EIP address
-
+# Create an EIP for the NAT Gateway
 resource "aws_eip" "ngw_eip1" {
   domain = "vpc"
   tags = {
-    Name = "EIP1"
+    Name = "ngw-eip"
   }
 }
 
@@ -145,106 +121,76 @@ resource "aws_eip" "ngw_eip2" {
   }
 }
 
-# Create a NAT  gateway in the first Public Subnet
-
-resource "aws_nat_gateway" "NATGW1" {
+# Create a NAT Gateway in the public subnet 1
+resource "aws_nat_gateway" "ngw1" {
   allocation_id = aws_eip.ngw_eip1.id
-  subnet_id     = aws_subnet.Public_Subnet1.id
+  subnet_id = aws_subnet.public_subnet_1.id
   tags = {
-    Name = "NATGW1"
+    Name = "ngw-1"
   }
 }
 
-# Create a NAT  gateway in the second Public Subnet
-
-resource "aws_nat_gateway" "NATGW2" {
+# Create a NAT Gateway in the public subnet 2
+resource "aws_nat_gateway" "ngw2" {
   allocation_id = aws_eip.ngw_eip2.id
-  subnet_id     = aws_subnet.Public_Subnet2.id
+  subnet_id = aws_subnet.public_subnet_2.id
   tags = {
-    Name = "NATGW2"
+    Name = "ngw-2"
   }
 }
 
-
-# Create the route table for private subnet 1
-
-resource "aws_route_table" "private_route_table1" {
-  # you can add depends_on here for the NATGW
-  vpc_id = aws_vpc.custom_VPC.id
-
+# Create the route table for the private subnets 1
+resource "aws_route_table" "private_rt-1" {
+  vpc_id = aws_vpc.main.id
   route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_nat_gateway.NATGW1.id
+    cidr_block = "0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.ngw1.id
   }
-
-  route {
-    cidr_block = "10.0.0.0/16"
-    gateway_id = "local"
-  }
-
   tags = {
-    Name      = "Private_RT_1"
-
+    Name = "private-rt-1"
   }
 }
 
-# Create the route table associations for private subnet 1
-
-resource "aws_route_table_association" "private_subnet1" {
-  depends_on     = [aws_subnet.Private_Subnet1]
-  route_table_id = aws_route_table.private_route_table1.id
-  subnet_id      = aws_subnet.Private_Subnet1.id
+# Create the route table association for the private subnets 1
+resource "aws_route_table_association" "private_rt_assoc_1" {
+  depends_on = [aws_subnet.private_subnet_1]
+  subnet_id = aws_subnet.private_subnet_1.id
+  route_table_id = aws_route_table.private_rt-1.id
 }
 
-
-# Create the route table for private subnet 2
-
-resource "aws_route_table" "private_route_table2" {
-  vpc_id = aws_vpc.custom_VPC.id
-
+# Create the route table for the private subnets 2
+resource "aws_route_table" "private_rt-2" {
+  vpc_id = aws_vpc.main.id
   route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_nat_gateway.NATGW2.id
+    cidr_block = "0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.ngw2.id
   }
-
-  route {
-    cidr_block = "10.0.0.0/16"
-    gateway_id = "local"
-  }
-
   tags = {
-    Name      = "Private_RT_2"
-
+    Name = "private-rt-2"
   }
 }
 
-# Create the route table associations for pivate subnet 2
-
-
-resource "aws_route_table_association" "private_subnet2" {
-  depends_on     = [aws_subnet.Private_Subnet2]
-  route_table_id = aws_route_table.private_route_table2.id
-  subnet_id      = aws_subnet.Private_Subnet2.id
+# Create the route table association for the private subnets 2
+resource "aws_route_table_association" "private_rt_assoc_2" {
+  depends_on = [aws_subnet.private_subnet_2]
+  subnet_id = aws_subnet.private_subnet_2.id
+  route_table_id = aws_route_table.private_rt-2.id
 }
 
+# Create the webSG security group
+resource "aws_security_group" "web_sg" {
+  name        = "web-sg"
+  description = "Allow HTTP and SSH traffic"
+  vpc_id      = aws_vpc.main.id 
 
-
-#########################
-# Task 3 : Create the two Security Groups
-
-# Create the WebSG security group
-
-resource "aws_security_group" "WebSG" {
-  name        = "WebSG"
-  description = "Allow HTTP for inbound traffic and all outbound traffic"
-  vpc_id      = aws_vpc.custom_VPC.id
-
-  tags = {
+    tags = {
     Name = "WebSG"
   }
+
 }
 
-# note the resource to create an ingress rule in the security group, which is aws_vpc_security_group_ingress_rule
+
+# note the resource to create an ingress rule in the webSG security group
 
 resource "aws_vpc_security_group_ingress_rule" "allow_http_ipv4" {
   security_group_id = aws_security_group.WebSG.id
@@ -262,13 +208,12 @@ resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
   ip_protocol       = "-1" # semantically equivalent to all ports
 }
 
+
 # Create the ALB security group
-
-resource "aws_security_group" "ALBSG" {
-  name        = "ALBSG"
-  description = "Allow HTTP for inbound traffic and all outbound traffic"
-  vpc_id      = aws_vpc.custom_VPC.id
-
+resource "aws_security_group" "alb_sg" {
+  name        = "alb-sg"
+  description = "Allow HTTP traffic to ALB"
+  vpc_id      = aws_vpc.main.id
   tags = {
     Name = "ALBSG"
   }
@@ -284,30 +229,13 @@ resource "aws_vpc_security_group_ingress_rule" "allow_http_ipv4_ALB" {
   to_port           = 80
 }
 
-
-# note the resource to create an egress rule in the security group, which is aws_vpc_security_group_egress_rule
-
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4_ALB" {
   security_group_id = aws_security_group.ALBSG.id
   cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1" # semantically equivalent to all ports
+  ip_protocol       = "-1" 
 }
 
-
-
-#########################
-# Task 4 : Create the Instance Profile and IAM Role
-
-# The instance profile will be required in the launch template to assign the IAM role to the instance that will be created by the auto scaling group
-
-# Create the profile and attach the role EC2_SSM to it
-
-resource "aws_iam_instance_profile" "LT_profile" {
-  name = "Launch_template_profile"
-  role = aws_iam_role.EC2_SSM.name
-}
-
-# Create the IAM role EC2_SSM
+# Crerate the IAM role EC２-ssm
 
 resource "aws_iam_role" "EC2_SSM" {
   name                = "EC2_SSM"
@@ -319,12 +247,20 @@ resource "aws_iam_role" "EC2_SSM" {
   }
 }
 
+＃  Create the profile and attach the role EC2-SSM to the profile
+resource "aws_iam_instance_profile" "EC2_SSM_profile" {
+  name = "Launch the template with the profile"
+  role = aws_iam_role.EC2_SSM.name
+  tags = {
+    Name = "EC2_SSM_profile"
+  }
+}
+
 # Define the trust policy of the IAM role (who can use the role), in this case EC2 service will be using the IAM role. 
 
 data "aws_iam_policy_document" "assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
-
     principals {
       type        = "Service"
       identifiers = ["ec2.amazonaws.com"]
@@ -332,8 +268,7 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
-# Create the IAM role permissions policy document
-# This policy document has IAM statements copied using the management console, under IAM , Policies, from the AWS managed policy AmazonEC2RoleforSSM
+# Create the IAM role persmission pilocy to allow the EC2 instance to use SSM service
 
 data "aws_iam_policy_document" "managed_policy" {
   version = "2012-10-17"
@@ -436,27 +371,24 @@ data "aws_iam_policy_document" "managed_policy" {
   }
 }
 
-# Attach the created IAM policy document to the IAM policy resource
+# Attach the created IAM policy to the IAM role EC2-SSM
 
-resource "aws_iam_policy" "SSM_policy" {
-  name        = "EC2_SSM-policy"
-  description = "allows EC2 to connect to SSM"
-  policy      = data.aws_iam_policy_document.managed_policy.json
+resource "aws_iam_role_policy" "EC2_SSM_policy" {
+  name   = "EC2_SSM_policy"
+  role   = aws_iam_role.EC2_SSM.id
+  policy = data.aws_iam_policy_document.managed_policy.json
 }
 
-# Attach the IAM policy SSM_policy to the IAM role
 
-resource "aws_iam_role_policy_attachment" "policy-attach" {
+## Attach the IAM policy SSM managed policy to the IAM role EC2-SSM
+
+resource "aws_iam_role_policy_attachment" "EC2_SSM_managed_policy" {
   role       = aws_iam_role.EC2_SSM.name
   policy_arn = aws_iam_policy.SSM_policy.arn
 }
 
 
-
-#########################
-# Task 5 : Create the Target Group and Application Load Balancer (ALB)
-
-# Create the Target group
+# Create the target group and ALB
 
 resource "aws_lb_target_group" "WebTG" {
   name     = "WebTG"
@@ -477,34 +409,27 @@ resource "aws_lb" "WebALB" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.ALBSG.id]
-  # the below line enables the ALB on the two Public subnets
-  subnets            = [aws_subnet.Public_Subnet1.id, aws_subnet.Public_Subnet2.id]
+  subnets            = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
 
   tags = {
     Name = "WebALB"
   }
 }
 
+#  Create the ALB listener for Port 80 HTTP with a forwarding rule to WebTG and link the listener to the ALB
 
-# Create the ALB listener for Port 80 HTTP with a forwarding rule to WebTG and link the listener to the ALB
-
-resource "aws_lb_listener" "front_end" {
+resource "aws_lb_listener" "WebALB_listener" {
   load_balancer_arn = aws_lb.WebALB.arn
-  port              = "80"
+  port              = 80
   protocol          = "HTTP"
-  
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.WebTG.arn
   }
 }
 
-#########################
-# Task 6 : Create the Launch Template and Auto Scaling Group
-# This template will be used by the auto scaling group (found below) to lauch EC2 instances as the Web/App tier.
-
-# Fetch the AMI for the region based on the below filters
-# Amazon 2 Linux
+# Create the launch template and auto scaaling group
 
 data "aws_ami" "myami" {
   most_recent = true
@@ -558,35 +483,29 @@ resource "aws_launch_template" "WebLT" {
     tags = {
       Name = "Web_App_Tier"
     }
+    user_data = filebase64("${path.module}/script.sh")  
   }
 
-# user data must be base64 encoded, we cannot use the function    file() only below to replace filebase64(...)
 
-  user_data = filebase64("${path.module}/script.sh")
-}
+# Create the Auto Scaling Group
 
- # path.module() dynamically reflects the directory containing the module’s configuration files. Using these functions can be helpful when you need to generate file paths dynamically or when dealing with modularized Terraform projects.
-
-
-## Create the auto scaling group
-
- 
- # The group will be responsible for launching, terminating, and adding/removing EC2 instances as needed. The group will use the Launch template craeted above. Also, it will use the WebSG security group.
- 
-resource "aws_autoscaling_group" "ASG" {
-  vpc_zone_identifier = [aws_subnet.Private_Subnet1.id, aws_subnet.Private_Subnet2.id]
-  # Enable the ELB health checks for the Auto Scaling
-  health_check_type   = "ELB"
-  desired_capacity    = 2
-  max_size            = 4
-  min_size            = 1
-  # This line links the Auto Scaling group to the ALB through the WebTG target group
-  target_group_arns   = [aws_lb_target_group.WebTG.arn]
-
+resource "aws_autoscaling_group" "WebASG" {
+  desired_capacity     = var.desired_capacity
+  max_size             = var.max_size
+  min_size             = var.min_size
+  vpc_zone_identifier  = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
   launch_template {
     id      = aws_launch_template.WebLT.id
     version = "$Latest"
   }
+  
+  # This is the health check type for the Auto Scaling group. It will use the ELB health checks to determine the health of the instances in the group.
+  health_check_type    = "ELB"
+  target_group_arns = [aws_lb_target_group.WebTG.arn]
+
+  tag {
+    key                 = "Name"
+    value               = "Web_App_Tier"
+    propagate_at_launch = true
+  }
 }
-
-
