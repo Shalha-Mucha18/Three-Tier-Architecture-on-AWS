@@ -11,7 +11,6 @@ Terraform configuration that provisions a modular, three-tier web architecture o
 - Each public subnet has its own NAT Gateway so each private subnet's outbound traffic stays within its own Availability Zone.
 - The ALB spans both public subnets and forwards HTTP traffic to the web tier's target group.
 - EC2 instances get SSM (Session Manager) access via an instance profile, so no SSH key/bastion host is required.
-- **Reserved for future work**: a data-tier private subnet per AZ (`Private_Subnet3`/`4` in the diagram) for a database layer (e.g. RDS Multi-AZ). Not created by this configuration yet — the `vpc` module currently provisions only the 2 public + 2 private (web tier) subnets shown above.
 
 ## Project structure
 
