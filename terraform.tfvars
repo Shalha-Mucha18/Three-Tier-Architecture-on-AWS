@@ -6,20 +6,25 @@ profile = "terraform_dev"
 vpc_cidr_block = "10.0.0.0/16"
 
 # Subnet Configuration
-public_subnet1_cidr_block = "10.0.10.0/24"
-public_subnet2_cidr_block = "10.0.20.0/24"
+public_subnet1_cidr_block  = "10.0.10.0/24"
+public_subnet2_cidr_block  = "10.0.20.0/24"
 private_subnet1_cidr_block = "10.0.100.0/24"
 private_subnet2_cidr_block = "10.0.200.0/24"
 
 # Availability Zones
-public_subnet1_az = "us-east-1a"
-public_subnet2_az = "us-east-1b"
+public_subnet1_az  = "us-east-1a"
+public_subnet2_az  = "us-east-1b"
 private_subnet1_az = "us-east-1a"
 private_subnet2_az = "us-east-1b"
 
 
 # Instance Configuration
-instance_type = "t2.micro"
+instance_type = "t3.micro"
+
+# Auto Scaling Group Configuration
+desired_capacity = 2
+max_size         = 4
+min_size         = 1
 
 
 # IAM Role Configuration
