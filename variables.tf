@@ -69,8 +69,27 @@ variable "private_subnet2_az" {
 }
 
 variable "instance_type" {
-  type = string
+  type    = string
   default = "t2.micro"
+}
+
+# Auto Scaling Group Configuration
+variable "desired_capacity" {
+  description = "Desired number of instances in the Auto Scaling group"
+  type        = number
+  default     = 2
+}
+
+variable "max_size" {
+  description = "Maximum number of instances in the Auto Scaling group"
+  type        = number
+  default     = 4
+}
+
+variable "min_size" {
+  description = "Minimum number of instances in the Auto Scaling group"
+  type        = number
+  default     = 1
 }
 
 # IAM Role Configuration
@@ -82,7 +101,7 @@ variable "instance_profile_role_name" {
 
 
 # Target Group configuration
-variable dereg-delay {
-  type = string
-  default     = "10"
+variable "dereg-delay" {
+  type    = string
+  default = "10"
 }
