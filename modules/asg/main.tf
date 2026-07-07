@@ -16,6 +16,11 @@ data "aws_ami" "myami" {
     name   = "virtualization-type"
     values = ["hvm"]
   }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
 }
 
 resource "aws_launch_template" "web_lt" {
