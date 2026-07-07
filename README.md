@@ -1,4 +1,4 @@
-# Three-Tier Architecture on AWS
+# Aws-Three-Tier-Terraform
 
 Terraform configuration that provisions a modular, three-tier web architecture on AWS: a public-facing Application Load Balancer, an Auto Scaling web tier running in private subnets, and NAT-routed internet egress — with networking, security, IAM, load balancing, and compute split into independent, reusable modules.
 
