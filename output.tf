@@ -1,7 +1,7 @@
 # #########################
-# Task 7: Output the ALB DNS
+# Output the ALB DNS
 
 output "alb_dns" {
   description = "The DNS name of the ALB"
-  value       = aws_lb.WebALB.dns_name
+  value       = module.alb.alb_dns_name
 }
